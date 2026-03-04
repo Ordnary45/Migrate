@@ -6,7 +6,9 @@
 Library/
 [Ll]ibrary/
 **/[Ll]ibrary/**
+Temp/
 /[Tt]emp/
+**/[Tt]emp/**
 /[Oo]bj/
 /[Bb]uild/
 /[Bb]uilds/
