@@ -60,6 +60,7 @@ ExportedObj/
 *.opendb
 *.VC.db
 
+**/UserSettings/Layouts/*.dwlt
 *.dwlt
 *.dwl
 
