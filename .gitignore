@@ -15,6 +15,7 @@ Temp/
 /[Ll]ogs/
 /[Uu]ser[Ss]ettings/
 **/[Uu]ser[Ss]ettings/
+Search.settings
 *.log
 
 # By default unity supports Blender asset imports, *.blend1 blender files do not need to be commited to version control.
