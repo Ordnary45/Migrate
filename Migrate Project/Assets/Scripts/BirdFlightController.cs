@@ -17,7 +17,6 @@ public class BirdFlightController : MonoBehaviour
     [SerializeField] private Transform leftWing;
     [SerializeField] private Transform rightWing;
     [SerializeField] private float wingFlapAngle = 30f;
-    [SerializeField] private float wingFlapSpeed = 10f;
 
     [Header("Area Constraints")]
     [SerializeField] private float areaLength = 1000f; // Length along X axis
@@ -35,7 +34,6 @@ public class BirdFlightController : MonoBehaviour
     private Vector3 previousRightControllerPos;
     private float currentSpeed;
     private bool isFlapping = false;
-    private float wingFlapTimer = 0f;
     private static BirdFlightController _instance;
 
     private static BirdFlightController Instance
@@ -224,14 +222,23 @@ public class BirdFlightController : MonoBehaviour
         Vector3 pos = transform.position;
 
         // X-axis constraint (long strip)
-        if (Mathf.Abs(pos.x) > areaLength / 2)
+        if (pos.x > areaLength)
         {
-            pos.x = Mathf.Sign(pos.x) * areaLength / 2;
+            pos.x = areaLength;
 
             // Bounce or turn around
             Vector3 newForward = transform.forward;
             newForward.x *= -0.5f;
             transform.forward = Vector3.Slerp(transform.forward, newForward.normalized, Time.deltaTime);
+        }
+        else if (pos.x < 0) // Behind the start
+        {
+            pos.x = 0;
+
+            // Push forward again
+            Vector3 newForward = transform.forward;
+            newForward.x = Mathf.Abs(newForward.x);
+            transform.forward = Vector3.Slerp(transform.forward, newForward.normalized, Time.deltaTime * 2f);
         }
 
         // Z-axis constraint (width)
@@ -262,8 +269,7 @@ public class BirdFlightController : MonoBehaviour
     {
         // Visualize the flight area in editor
         Gizmos.color = Color.yellow;
-        Vector3 center = transform.position;
-        center.y = minHeight + (maxHeight - minHeight) / 2;
+        Vector3 center = new Vector3(areaLength / 2, (minHeight + maxHeight) / 2, 0);
         Vector3 size = new Vector3(areaLength, maxHeight - minHeight, areaWidth);
         Gizmos.DrawWireCube(center, size);
     }
