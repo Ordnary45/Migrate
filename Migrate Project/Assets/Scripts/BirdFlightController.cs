@@ -17,6 +17,8 @@ public class BirdFlightController : MonoBehaviour
     [SerializeField] private Transform leftWing;
     [SerializeField] private Transform rightWing;
     [SerializeField] private float wingFlapAngle = 30f;
+    [SerializeField] private float maxFlapDelay = 0.2f; 
+    [SerializeField] private float flapVelocityThreshold = 1.5f;
 
     [Header("Area Constraints")]
     [SerializeField] private float areaLength = 1000f; // Length along X axis
@@ -36,10 +38,16 @@ public class BirdFlightController : MonoBehaviour
     private Rigidbody rb;
     private Vector3 previousLeftControllerPos;
     private Vector3 previousRightControllerPos;
+
     private float currentSpeed;
     private bool isFlapping = false;
-    private static BirdFlightController _instance;
+    private bool leftWingFlapped = false;
+    private bool rightWingFlapped = false;
+    private float leftFlapTime = 0f;
+    private float rightFlapTime = 0f;
+    float pitchInput, rollInput, yawInput;
 
+    private static BirdFlightController _instance;
     private static BirdFlightController Instance
     {
         get
@@ -113,9 +121,38 @@ public class BirdFlightController : MonoBehaviour
         float leftFlapSpeed = leftVelocity.y;
         float rightFlapSpeed = rightVelocity.y;
 
-        if ((leftFlapSpeed > 2f || rightFlapSpeed > 2f) && !isFlapping)
+        if ((leftFlapSpeed > 2f) && !isFlapping)
         {
-            FlapWings();
+            leftWingFlapped = true;
+            leftFlapTime = Time.deltaTime;
+            if (leftWingFlapped && rightWingFlapped)
+            {
+                if (Mathf.Abs(leftFlapTime - rightFlapTime) <= maxFlapDelay)
+                {
+                    FlapWings();
+
+                    // Reset flap states
+                    leftWingFlapped = false;
+                    rightWingFlapped = false;
+                }
+            }
+        }
+
+        if ((rightFlapSpeed > 2f) && !isFlapping)
+        {
+            rightWingFlapped = true;
+            rightFlapTime = Time.deltaTime;
+            if (leftWingFlapped && rightWingFlapped)
+            {
+                if (Mathf.Abs(leftFlapTime - rightFlapTime) <= maxFlapDelay)
+                {
+                    FlapWings();
+
+                    // Reset flap states
+                    leftWingFlapped = false;
+                    rightWingFlapped = false;
+                }
+            }
         }
 
         // Controller orientation for flight control
@@ -124,9 +161,9 @@ public class BirdFlightController : MonoBehaviour
         Vector3 averagedRotation = (leftControllerRotation + rightControllerRotation) / 2f;
 
         // Use controller tilt for flight control
-        float pitchInput = Mathf.Clamp(NormalizeAngle(averagedRotation.x), -1f, 1f);
-        float rollInput = Mathf.Clamp(NormalizeAngle(averagedRotation.z), -1f, 1f);
-        float yawInput = Mathf.Clamp(NormalizeAngle(averagedRotation.y), -1f, 1f);
+        pitchInput = Mathf.Clamp(NormalizeAngle(averagedRotation.x), -1f, 1f);
+        rollInput = Mathf.Clamp(NormalizeAngle(averagedRotation.z), -1f, 1f);
+        yawInput = Mathf.Clamp(NormalizeAngle(averagedRotation.y), -1f, 1f);
 
         // Apply deadzone - small rotations are ignored
         if (Mathf.Abs(pitchInput) < controllerDeadzone) pitchInput = 0;
@@ -154,33 +191,64 @@ public class BirdFlightController : MonoBehaviour
 
     void HandleKeyboardInput()
     {
-        //Flapping is tap based - have to press both to activate
-        if ((Input.GetKeyDown(KeyCode.LeftArrow) && Input.GetKeyDown(KeyCode.RightArrow)) && !isFlapping)
+        //Flapping is tap based - have to press both within time limit to activate
+        if ((Input.GetKeyDown(KeyCode.LeftArrow) && !isFlapping))
         {
-            FlapWings();
+            leftWingFlapped = true;
+            leftFlapTime = Time.deltaTime;
+            if (leftWingFlapped && rightWingFlapped)
+            {
+                if (Mathf.Abs(leftFlapTime - rightFlapTime) <= maxFlapDelay)
+                {
+                    FlapWings();
+
+                    // Reset flap states
+                    leftWingFlapped = false;
+                    rightWingFlapped = false;
+                }
+            }
         }
 
+        if ((Input.GetKeyDown(KeyCode.RightArrow) && !isFlapping))
+        {
+            rightWingFlapped = true;
+            rightFlapTime = Time.deltaTime;
+            if (leftWingFlapped && rightWingFlapped)
+            {
+                if (Mathf.Abs(leftFlapTime - rightFlapTime) <= maxFlapDelay)
+                {
+                    FlapWings();
+
+                    // Reset flap states
+                    leftWingFlapped = false;
+                    rightWingFlapped = false;
+                }
+            }
+        }            
+
         //Rotation inputs
-        float pitchInput = 0f;
-        float yawInput = 0f;
-        float rollInput = 0f;
+        pitchInput = 0f;
+        yawInput = 0f;
+        rollInput = 0f;
 
         // Pitch (W/S)
-        if (Input.GetKey(KeyCode.Q)) pitchInput = 1f;
-        if (Input.GetKey(KeyCode.E)) pitchInput = -1f;
+        if (Input.GetKey(KeyCode.W)) pitchInput = -1f;
+        if (Input.GetKey(KeyCode.S)) pitchInput = 1f;
 
         // Yaw (A/D)
         if (Input.GetKey(KeyCode.A)) yawInput = -1f;
         if (Input.GetKey(KeyCode.D)) yawInput = 1f;
 
         // Roll (Q/E)
-        if (Input.GetKey(KeyCode.W)) rollInput = 1f;
-        if (Input.GetKey(KeyCode.S)) rollInput = -1f;
+        if (Input.GetKey(KeyCode.Q)) rollInput = 1f;
+        if (Input.GetKey(KeyCode.E)) rollInput = -1f;
 
         // Apply rotation
         float pitch = pitchInput * turnSpeed * Time.deltaTime;
         float yaw = yawInput * turnSpeed * Time.deltaTime;
         float roll = rollInput * turnSpeed * Time.deltaTime;
+
+        Debug.Log(pitchInput + " " + rollInput + " " + yawInput);
 
         transform.Rotate(pitch, yaw, roll, Space.Self);
     }
@@ -323,5 +391,18 @@ public class BirdFlightController : MonoBehaviour
         Vector3 center = new Vector3(areaLength / 2, (minHeight + maxHeight) / 2, 0);
         Vector3 size = new Vector3(areaLength, maxHeight - minHeight, areaWidth);
         Gizmos.DrawWireCube(center, size);
+    }
+
+    void OnGUI()
+    {
+        // Display controller values on screen for debugging
+        if (leftController != null && rightController != null)
+        {
+            GUILayout.Label($"Left Controller: {leftController.localEulerAngles}");
+            GUILayout.Label($"Right Controller: {rightController.localEulerAngles}");
+            GUILayout.Label($"Averaged Input - Pitch: {pitchInput}, Roll: {rollInput}, Yaw: {yawInput}");
+            GUILayout.Label($"Current Speed: {currentSpeed:F1}");
+            GUILayout.Label($"Position: {transform.position}");
+        }
     }
 }
