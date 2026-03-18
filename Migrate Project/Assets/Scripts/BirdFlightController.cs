@@ -76,12 +76,14 @@ public class BirdFlightController : MonoBehaviour
             previousRightControllerPos = rightController.position;
     }
 
+    // For handling movement physics and boundary detection
     void FixedUpdate()
     {
         HandleFlight();
         ApplyAreaConstraints();
     }
 
+    // Reads player input and animates the wings visually
     void Update()
     {
         HandleControllerInput();
@@ -96,7 +98,7 @@ public class BirdFlightController : MonoBehaviour
         Vector3 leftVelocity = (leftController.position - previousLeftControllerPos) / Time.deltaTime;
         Vector3 rightVelocity = (rightController.position - previousRightControllerPos) / Time.deltaTime;
 
-        // Flapping detection - quick upward motion
+        // Flapping detection - checks only for y movement
         float leftFlapSpeed = leftVelocity.y;
         float rightFlapSpeed = rightVelocity.y;
 
@@ -108,21 +110,22 @@ public class BirdFlightController : MonoBehaviour
         // Controller orientation for flight control
         Vector3 leftControllerRotation = leftController.localEulerAngles;
         Vector3 rightControllerRotation = rightController.localEulerAngles;
+        Vector3 averagedRotation = (leftControllerRotation + rightControllerRotation) / 2f;
 
         // Use controller tilt for flight control
-        float pitchInput = Mathf.Clamp(NormalizeAngle(rightControllerRotation.x), -1f, 1f);
-        float rollInput = Mathf.Clamp(NormalizeAngle(rightControllerRotation.z), -1f, 1f);
-        float yawInput = Mathf.Clamp(NormalizeAngle(leftControllerRotation.y), -1f, 1f);
+        float pitchInput = Mathf.Clamp(NormalizeAngle(averagedRotation.x), -1f, 1f);
+        float rollInput = Mathf.Clamp(NormalizeAngle(averagedRotation.z), -1f, 1f);
+        float yawInput = Mathf.Clamp(NormalizeAngle(averagedRotation.y), -1f, 1f);
 
-        // Apply deadzone
+        // Apply deadzone - small rotations are ignored
         if (Mathf.Abs(pitchInput) < controllerDeadzone) pitchInput = 0;
         if (Mathf.Abs(rollInput) < controllerDeadzone) rollInput = 0;
         if (Mathf.Abs(yawInput) < controllerDeadzone) yawInput = 0;
 
         // Apply rotation based on controller inputs
         float pitch = pitchInput * turnSpeed * Time.deltaTime;
+        float roll = rollInput * turnSpeed * Time.deltaTime;    // rollInput Might need to be negative
         float yaw = yawInput * turnSpeed * Time.deltaTime;
-        float roll = -rollInput * turnSpeed * Time.deltaTime; // Negative for intuitive control
 
         transform.Rotate(pitch, yaw, roll, Space.Self);
 
@@ -131,12 +134,21 @@ public class BirdFlightController : MonoBehaviour
         previousRightControllerPos = rightController.position;
     }
 
+    //
+    float NormalizeAngle(float angle)
+    {
+        angle = angle % 360;
+        if (angle > 180) angle -= 360;
+        return angle / 180f;
+    }
+
+    // Handles the forward motion and gravity of player
     void HandleFlight()
     {
-        // Forward thrust based on current speed
+        // Forward thrust based on current speed towards the direction it faces
         Vector3 forwardThrust = transform.forward * currentSpeed;
 
-        // Apply gravity effect (reduced when flapping)
+        // Apply gravity effect (reduced when flapping - feels more intuitive)
         float currentGravity = isFlapping ? gravity * 0.3f : gravity;
         Vector3 gravityForce = Vector3.up * currentGravity;
 
@@ -152,9 +164,11 @@ public class BirdFlightController : MonoBehaviour
             minForwardSpeed + (maxForwardSpeed - minForwardSpeed) * (1 - Mathf.Abs(verticalInput)),
             Time.deltaTime);
     }
-
+    
+    // The flapping wings mechanic
     void FlapWings()
     {
+        // Animates the wings
         StartCoroutine(FlapCoroutine());
 
         // Add upward force when flapping
@@ -217,6 +231,7 @@ public class BirdFlightController : MonoBehaviour
         }
     }
 
+    // Invisible boundary to restrict player from leaving
     void ApplyAreaConstraints()
     {
         Vector3 pos = transform.position;
@@ -256,13 +271,6 @@ public class BirdFlightController : MonoBehaviour
         pos.y = Mathf.Clamp(pos.y, minHeight, maxHeight);
 
         transform.position = pos;
-    }
-
-    float NormalizeAngle(float angle)
-    {
-        angle = angle % 360;
-        if (angle > 180) angle -= 360;
-        return angle / 180f;
     }
 
     void OnDrawGizmosSelected()
