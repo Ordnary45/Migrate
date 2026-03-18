@@ -29,6 +29,10 @@ public class BirdFlightController : MonoBehaviour
     [SerializeField] private Transform rightController;
     [SerializeField] private float controllerDeadzone = 0.1f;
 
+    [Header("Keyboard Testing")]
+    [SerializeField] private bool keyControls = false;
+    [SerializeField] private float keyboardFlapForce = 1.2f;
+
     private Rigidbody rb;
     private Vector3 previousLeftControllerPos;
     private Vector3 previousRightControllerPos;
@@ -86,7 +90,14 @@ public class BirdFlightController : MonoBehaviour
     // Reads player input and animates the wings visually
     void Update()
     {
-        HandleControllerInput();
+        if (keyControls)
+        {
+            HandleKeyboardInput();
+        }
+        else
+        {
+            HandleControllerInput();
+        }
         AnimateWings();
     }
 
@@ -134,12 +145,44 @@ public class BirdFlightController : MonoBehaviour
         previousRightControllerPos = rightController.position;
     }
 
-    //
     float NormalizeAngle(float angle)
     {
         angle = angle % 360;
         if (angle > 180) angle -= 360;
         return angle / 180f;
+    }
+
+    void HandleKeyboardInput()
+    {
+        //Flapping is tap based - have to press both to activate
+        if ((Input.GetKeyDown(KeyCode.LeftArrow) && Input.GetKeyDown(KeyCode.RightArrow)) && !isFlapping)
+        {
+            FlapWings();
+        }
+
+        //Rotation inputs
+        float pitchInput = 0f;
+        float yawInput = 0f;
+        float rollInput = 0f;
+
+        // Pitch (W/S)
+        if (Input.GetKey(KeyCode.Q)) pitchInput = 1f;
+        if (Input.GetKey(KeyCode.E)) pitchInput = -1f;
+
+        // Yaw (A/D)
+        if (Input.GetKey(KeyCode.A)) yawInput = -1f;
+        if (Input.GetKey(KeyCode.D)) yawInput = 1f;
+
+        // Roll (Q/E)
+        if (Input.GetKey(KeyCode.W)) rollInput = 1f;
+        if (Input.GetKey(KeyCode.S)) rollInput = -1f;
+
+        // Apply rotation
+        float pitch = pitchInput * turnSpeed * Time.deltaTime;
+        float yaw = yawInput * turnSpeed * Time.deltaTime;
+        float roll = rollInput * turnSpeed * Time.deltaTime;
+
+        transform.Rotate(pitch, yaw, roll, Space.Self);
     }
 
     // Handles the forward motion and gravity of player

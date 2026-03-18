@@ -996,6 +996,8 @@ MonoBehaviour:
   leftController: {fileID: 2008942463}
   rightController: {fileID: 250676028}
   controllerDeadzone: 0.2
+  keyControls: 1
+  keyboardFlapForce: 1.2
 --- !u!1 &1212078539
 GameObject:
   m_ObjectHideFlags: 0
