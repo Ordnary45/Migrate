@@ -17,7 +17,7 @@ public class BirdFlightController : MonoBehaviour
     [SerializeField] private Transform leftWing;
     [SerializeField] private Transform rightWing;
     [SerializeField] private float wingFlapAngle = 30f;
-    [SerializeField] private float maxFlapDelay = 0.2f; 
+    [SerializeField] private float maxFlapDelay = 0.2f;
 
     [Header("Area Constraints")]
     [SerializeField] private float areaLength = 1000f; // Length along X axis
@@ -48,6 +48,10 @@ public class BirdFlightController : MonoBehaviour
     private float rightFlapTime = 0f;
     float pitchInput, rollInput, yawInput;
 
+    public float GetAreaLength() => areaLength;
+    public float GetMinHeight() => minHeight;
+    public float GetMaxHeight() => maxHeight;
+
     private static BirdFlightController _instance;
     private static BirdFlightController Instance
     {
@@ -64,8 +68,8 @@ public class BirdFlightController : MonoBehaviour
         if (_instance == null)
         {
             _instance = this;
-        } 
-        else if (_instance != this) 
+        }
+        else if (_instance != this)
         {
             Destroy(gameObject);
             return;
@@ -225,7 +229,7 @@ public class BirdFlightController : MonoBehaviour
                     rightWingFlapped = false;
                 }
             }
-        }            
+        }
 
         //Rotation inputs
         pitchInput = 0f;
@@ -276,7 +280,7 @@ public class BirdFlightController : MonoBehaviour
             minForwardSpeed + (maxForwardSpeed - minForwardSpeed) * (1 - Mathf.Abs(verticalInput)),
             Time.deltaTime);
     }
-    
+
     // The flapping wings mechanic
     void FlapWings()
     {

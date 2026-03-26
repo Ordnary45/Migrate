@@ -135,13 +135,17 @@ public class BirdCollisionHandler : MonoBehaviour
         if (flightController != null)
             flightController.enabled = false;
 
+        float areaLength = flightController.GetAreaLength();
+        float minHeight = flightController.GetMinHeight();
+        float maxHeight = flightController.GetMaxHeight();
+
         // Calculate new position
         Vector3 newPosition = transform.position;
         newPosition.x -= pushbackDistance;
 
         // Keep within world limits
-        newPosition.x = Mathf.Max(0, newPosition.x);
-        newPosition.y = Mathf.Clamp(newPosition.y, 5f, 200f);
+        newPosition.x = Mathf.Clamp(newPosition.x, 0, areaLength);
+        newPosition.y = Mathf.Clamp(newPosition.y, minHeight, maxHeight);
 
         // Check if the new position is colliding
         if (IsPositionColliding(newPosition))
@@ -158,7 +162,7 @@ public class BirdCollisionHandler : MonoBehaviour
                 if (!IsPositionColliding(testPosition))
                 {
                     newPosition = testPosition;
-                    Debug.Log($"Found safe position at distance: {distance}");
+                    Debug.Log($"Found safe position.");
                     break;
                 }
             }
@@ -181,8 +185,6 @@ public class BirdCollisionHandler : MonoBehaviour
             flightController.enabled = true;
 
         isRecovering = false;
-
-        Debug.Log($"Bird moved back to: {transform.position}");
     }
 
     bool IsPositionColliding(Vector3 position)
