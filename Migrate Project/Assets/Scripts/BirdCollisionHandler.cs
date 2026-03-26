@@ -119,9 +119,6 @@ public class BirdCollisionHandler : MonoBehaviour
             // Stop all movement
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
-
-            // Increase drag to prevent residual movement
-            rb.angularDamping = angularDragDuringCollision;
         }
 
         // Reset rotation to stable orientation
@@ -144,7 +141,6 @@ public class BirdCollisionHandler : MonoBehaviour
 
         // Keep within world limits
         newPosition.x = Mathf.Max(0, newPosition.x);
-
         newPosition.y = Mathf.Clamp(newPosition.y, 5f, 200f);
 
         // Check if the new position is colliding

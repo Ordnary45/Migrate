@@ -4,7 +4,28 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/Test Scene.unity
+    guid: 94ef1173efe66014c9fb6c5713bf34a4
+  - enabled: 1
+    path: Assets/Scenes/Main Scene.unity
+    guid: b354b263bb195cc40b4bcc1fcdc5a0de
+  - enabled: 1
+    path: Assets/Scenes/Level1.unity
+    guid: 19e96630fc449544d874a0eaee92a4d7
+  - enabled: 1
+    path: Assets/Scenes/Level2.unity
+    guid: 37e6134b0480a284f880422ce670dfe8
+  - enabled: 1
+    path: Assets/Scenes/Level3.unity
+    guid: bfe606a07a899f741a1bbe72f361b94c
+  - enabled: 1
+    path: Assets/Scenes/Game Over.unity
+    guid: eccc86742a52d464d8d52593350d8c00
+  - enabled: 1
+    path: Assets/Scenes/You win.unity
+    guid: cd4d84cdd30a10d49914758c28ea1a37
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 289c1b55c9541489481df5cc06664110, type: 3}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: d2a82202a46dd6c4886164cefe5b793e, type: 2}
