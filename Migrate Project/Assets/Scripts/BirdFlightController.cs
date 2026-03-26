@@ -18,7 +18,6 @@ public class BirdFlightController : MonoBehaviour
     [SerializeField] private Transform rightWing;
     [SerializeField] private float wingFlapAngle = 30f;
     [SerializeField] private float maxFlapDelay = 0.2f; 
-    [SerializeField] private float flapVelocityThreshold = 1.5f;
 
     [Header("Area Constraints")]
     [SerializeField] private float areaLength = 1000f; // Length along X axis
@@ -31,9 +30,11 @@ public class BirdFlightController : MonoBehaviour
     [SerializeField] private Transform rightController;
     [SerializeField] private float controllerDeadzone = 0.1f;
 
+    [Header("References")]
+    [SerializeField] private BirdCollisionHandler collisionHandler;
+
     [Header("Keyboard Testing")]
     [SerializeField] private bool keyControls = false;
-    [SerializeField] private float keyboardFlapForce = 1.2f;
 
     private Rigidbody rb;
     private Vector3 previousLeftControllerPos;
@@ -248,7 +249,7 @@ public class BirdFlightController : MonoBehaviour
         float yaw = yawInput * turnSpeed * Time.deltaTime;
         float roll = rollInput * turnSpeed * Time.deltaTime;
 
-        Debug.Log(pitchInput + " " + rollInput + " " + yawInput);
+        //Debug.Log(pitchInput + " " + rollInput + " " + yawInput);
 
         transform.Rotate(pitch, yaw, roll, Space.Self);
     }
@@ -403,6 +404,7 @@ public class BirdFlightController : MonoBehaviour
             GUILayout.Label($"Averaged Input - Pitch: {pitchInput}, Roll: {rollInput}, Yaw: {yawInput}");
             GUILayout.Label($"Current Speed: {currentSpeed:F1}");
             GUILayout.Label($"Position: {transform.position}");
+            GUILayout.Label($"Health: {collisionHandler.GetCurrentHealth()}");
         }
     }
 }
