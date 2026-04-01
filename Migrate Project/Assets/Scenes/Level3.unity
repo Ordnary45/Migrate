@@ -286,11 +286,10 @@ MonoBehaviour:
   leftWing: {fileID: 1144166294}
   rightWing: {fileID: 1500266175}
   wingFlapAngle: 30
-  maxFlapDelay: 0.2
-  flapVelocityThreshold: 1.5
   startupFlapDelay: 2
-  flapCooldown: 0.5
-  wingCooldown: 0.3
+  upThreshold: 0.15
+  downThreshold: -0.15
+  maxStoredFlaps: 3
   areaLength: 1500
   areaWidth: 200
   minHeight: 10
@@ -1926,7 +1925,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VRCameraFollow
   target: {fileID: 170094202}
   positionSmoothing: 5
-  positionOffset: {x: 0, y: 1, z: -1.5}
+  positionOffset: {x: 0, y: 0.5, z: -1.5}
   maintainWorldOffset: 1
   maxFollowDistance: 50
   smoothPosition: 1

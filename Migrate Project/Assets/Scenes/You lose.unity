@@ -1427,7 +1427,7 @@ MonoBehaviour:
   loseScreenPanel: {fileID: 1317458999}
   playAgainButton: {fileID: 1531711218}
   quitButton: {fileID: 837425375}
-  gameSceneName: Level3
+  gameSceneName: Level1
 --- !u!1 &1531711216
 GameObject:
   m_ObjectHideFlags: 0
