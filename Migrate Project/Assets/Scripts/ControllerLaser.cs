@@ -17,7 +17,6 @@ public class ControllerLaser : MonoBehaviour
 
     private GameObject currentHitObject;
     private Button currentButton;
-    private bool isHovering = false;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -88,7 +87,6 @@ public class ControllerLaser : MonoBehaviour
                     // Enter new button
                     currentButton = button;
                     ExecuteEvents.Execute(currentButton.gameObject, new PointerEventData(EventSystem.current), ExecuteEvents.pointerEnterHandler);
-                    isHovering = true;
                 }
 
                 // Check for click
@@ -157,7 +155,6 @@ public class ControllerLaser : MonoBehaviour
         {
             ExecuteEvents.Execute(currentButton.gameObject, new PointerEventData(EventSystem.current), ExecuteEvents.pointerExitHandler);
             currentButton = null;
-            isHovering = false;
         }
     }
 }

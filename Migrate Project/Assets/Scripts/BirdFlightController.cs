@@ -7,7 +7,7 @@ public class BirdFlightController : MonoBehaviour
 {
     [Header("Flight Settings")]
     [SerializeField] private float flapForce = 14f;
-    [SerializeField] private float maxForwardSpeed = 15f;
+    [SerializeField] private float maxForwardSpeed = 18f;
     [SerializeField] private float minForwardSpeed = 8f;
     [SerializeField] private float smoothing = 8f;
     [SerializeField] private float gravity = -6f;
@@ -61,7 +61,7 @@ public class BirdFlightController : MonoBehaviour
     private bool flapsEnabled = false;
     private float startupTimer = 0f;
     private float lastFlapTime = 0f;
-    private float flapCooldown = 0.4f;
+    private float flapCooldown = 1f;
 
     private Quaternion targetRotation;
 
@@ -88,8 +88,6 @@ public class BirdFlightController : MonoBehaviour
     {
         get
         {
-            if (_instance == null)
-                Debug.LogError("PlayerController instance is null. Ensure it exists in scene.");
             return _instance;
         }
     }
@@ -127,7 +125,6 @@ public class BirdFlightController : MonoBehaviour
         if (birdVisual != null)
         {
             birdVisual.localRotation = Quaternion.identity;
-            Debug.Log($"Bird visual local rotation: {birdVisual.localEulerAngles}");
         }
 
         // Store initial controller positions
@@ -206,7 +203,6 @@ public class BirdFlightController : MonoBehaviour
             {
                 leftWingFlapped = true;
                 leftFlapTime = Time.time;
-                Debug.Log($"Left wing flapped! Speed: {leftFlapSpeed:F1}");
             }
 
             // Check if right wing flapped
@@ -214,7 +210,6 @@ public class BirdFlightController : MonoBehaviour
             {
                 rightWingFlapped = true;
                 rightFlapTime = Time.time;
-                Debug.Log($"Right wing flapped! Speed: {rightFlapSpeed:F1}");
             }
 
             // If both wings have flapped within the delay window, trigger flap
@@ -281,7 +276,7 @@ public class BirdFlightController : MonoBehaviour
             yawInput = Mathf.Clamp(yawInput, -60f, 60f);
             rollInput = Mathf.Clamp(rollInput, -60f, 60f);
 
-            Quaternion desiredRotation = Quaternion.Euler(pitchInput, yawInput, -rollInput);
+            Quaternion desiredRotation = Quaternion.Euler(pitchInput, yawInput, rollInput);
             targetRotation = calibratedNeutralRotation * desiredRotation;
 
             // When banking, add a turning force based on roll angle
@@ -537,8 +532,6 @@ public class BirdFlightController : MonoBehaviour
 
             // Reset target rotation to neutral
             targetRotation = calibratedNeutralRotation;
-
-            Debug.Log($"Calibrated! Neutral rotation: {calibratedNeutralRotation.eulerAngles}");
         }
     }
 
@@ -688,7 +681,5 @@ public class BirdFlightController : MonoBehaviour
             previousLeftControllerPos = leftController.position;
         if (rightController != null)
             previousRightControllerPos = rightController.position;
-
-        Debug.Log("Flap states reset");
     }
 }
