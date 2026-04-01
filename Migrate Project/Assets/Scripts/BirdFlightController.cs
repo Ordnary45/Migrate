@@ -18,10 +18,10 @@ public class BirdFlightController : MonoBehaviour
     [SerializeField] private Transform rightWing;
     [SerializeField] private float wingFlapAngle = 35f;
     [SerializeField] private float maxFlapDelay = 0.2f;
-    [SerializeField] private float flapVelocityThreshold = 0.6f; // Reduced for easier detection
+    [SerializeField] private float flapVelocityThreshold = 0.6f;
     [SerializeField] private float startupFlapDelay = 2f;
-    [SerializeField] private float flapCooldown = 0.5f; // Cooldown between flaps
-    [SerializeField] private float wingCooldown = 0.3f; // Cooldown per wing to prevent multiple triggers
+    [SerializeField] private float flapCooldown = 0.5f;
+    [SerializeField] private float wingCooldown = 0.3f;
 
     [Header("Area Constraints")]
     [SerializeField] private float areaLength = 1000f;
@@ -71,7 +71,7 @@ public class BirdFlightController : MonoBehaviour
     private float leftWingTriggerCooldown = 0f;
     private float rightWingTriggerCooldown = 0f;
 
-    // Track previous flap state for edge detection
+    // Track previous flap state for detection
     private bool leftWingWasFlapping = false;
     private bool rightWingWasFlapping = false;
 
@@ -122,10 +122,12 @@ public class BirdFlightController : MonoBehaviour
 
     void Start()
     {
+        // Get or add a Rigidbody component to handle physics simulation
         rb = GetComponent<Rigidbody>();
         if (rb == null)
             rb = gameObject.AddComponent<Rigidbody>();
 
+        // Starting forward speed, gravity is manually applied later
         rb.useGravity = false;
         rb.linearDamping = glideDrag;
         currentSpeed = minForwardSpeed;
@@ -133,11 +135,13 @@ public class BirdFlightController : MonoBehaviour
         initialForward = transform.forward;
         targetRotation = transform.rotation;
 
+        // Reset bird visual's local rotation to identity
         if (birdVisual != null)
         {
             birdVisual.localRotation = Quaternion.identity;
         }
 
+        // Store initial controller positions for velocity calculation
         if (leftController != null)
             previousLeftControllerPos = leftController.position;
         if (rightController != null)
@@ -191,6 +195,7 @@ public class BirdFlightController : MonoBehaviour
         bool aButtonPressed = OVRInput.GetDown(OVRInput.Button.One);
         bool xButtonPressed = OVRInput.GetDown(OVRInput.Button.Three);
 
+        // If either A button (right hand) OR X button (left hand) was pressed
         if (aButtonPressed || xButtonPressed)
         {
             CalibrateNeutralPosition();
@@ -208,7 +213,7 @@ public class BirdFlightController : MonoBehaviour
         float leftFlapSpeed = leftVelocity.y;
         float rightFlapSpeed = rightVelocity.y;
 
-        // Flap detection with edge triggering (only triggers on rising edge)
+        // Flap detection with state tracking and cooldowns
         if (flapsEnabled && !isFlapping && Time.time - lastFlapTime > flapCooldown)
         {
             bool leftTriggered = false;
@@ -235,7 +240,7 @@ public class BirdFlightController : MonoBehaviour
             }
 
             // Update previous states for next frame
-            leftWingWasFlapping = leftFlapSpeed > flapVelocityThreshold * 0.5f; // Lower threshold to reset
+            leftWingWasFlapping = leftFlapSpeed > flapVelocityThreshold * 0.5f;
             rightWingWasFlapping = rightFlapSpeed > flapVelocityThreshold * 0.5f;
 
             // If both wings have flapped within the delay window, trigger flap
@@ -280,6 +285,7 @@ public class BirdFlightController : MonoBehaviour
         // Flight control code
         if (isCalibrated)
         {
+            // Gets current controller orientations
             Vector3 leftEuler = leftController.localEulerAngles;
             Vector3 rightEuler = rightController.localEulerAngles;
 
@@ -294,16 +300,22 @@ public class BirdFlightController : MonoBehaviour
                 Mathf.DeltaAngle(calibratedRightRotation.z, rightEuler.z)
             );
 
+            // Average both controllers for smoother, more stable control
             Vector3 averagedDelta = (leftDelta + rightDelta) / 2f;
 
+            // X-axis (pitch) - tilting forward/backward controls nose up/down
+            // Y-axis (yaw) - twisting controls left/right turning
+            // Z-axis (roll) - tilting sideways controls banking
             float pitchInput = averagedDelta.x * controllerSensitivity * 1.5f;
             float yawInput = averagedDelta.y * controllerSensitivity;
             float rollInput = averagedDelta.z * controllerSensitivity;
 
+            // Apply deadzone - ignore small movements
             if (Mathf.Abs(pitchInput) < controllerDeadzone) pitchInput = 0;
             if (Mathf.Abs(yawInput) < controllerDeadzone) yawInput = 0;
             if (Mathf.Abs(rollInput) < controllerDeadzone) rollInput = 0;
 
+            // Clamp inputs to prevent extreme rotations
             pitchInput = Mathf.Clamp(pitchInput, -60f, 60f);
             yawInput = Mathf.Clamp(yawInput, -80f, 80f);
             rollInput = Mathf.Clamp(rollInput, -80f, 80f);
@@ -311,18 +323,18 @@ public class BirdFlightController : MonoBehaviour
             Quaternion desiredRotation = Quaternion.Euler(pitchInput, yawInput, rollInput);
             targetRotation = calibratedNeutralRotation * desiredRotation;
 
+            // Add turning force based on roll angle (banking turns)
             float turnStrength = -rollInput * 0.8f;
             Vector3 turnForce = transform.right * turnStrength * turnSpeedMultiplier;
             rb.AddForce(turnForce, ForceMode.Acceleration);
         }
-
         previousLeftControllerPos = leftController.position;
         previousRightControllerPos = rightController.position;
     }
 
     void HandleKeyboardInput()
     {
-        // Keyboard flap detection (simpler)
+        // Keyboard flap detection
         if (!isFlapping && Time.time - lastFlapTime > flapCooldown)
         {
             bool leftPressed = Input.GetKeyDown(KeyCode.LeftArrow);
@@ -366,17 +378,20 @@ public class BirdFlightController : MonoBehaviour
 
         float rollDrag = Mathf.Abs(rollAngle) * 0.2f;
 
+        // Target speed based on pitch and roll
         float targetSpeed = Mathf.Lerp(minForwardSpeed, maxForwardSpeed,
             (1f - Mathf.Abs(pitchAngle)) * (1f - rollDrag));
 
         currentSpeed = Mathf.Lerp(currentSpeed, targetSpeed, Time.deltaTime * 4f);
 
+        // Forward thrust based on current speed
         Vector3 forwardThrust = transform.forward * currentSpeed;
 
         float speedLift = 6f * (currentSpeed / maxForwardSpeed);
         float angleOfAttack = pitchAngle * 2f;
         float aoaLift = angleOfAttack * 4f;
 
+        // Stall mechanics - Nose up at low speed losses lift
         float stallThreshold = 0.6f;
         float stallMultiplier = 1f;
         if (pitchAngle > stallThreshold && currentSpeed < minForwardSpeed * 1.2f)
@@ -384,6 +399,7 @@ public class BirdFlightController : MonoBehaviour
             stallMultiplier = Mathf.Lerp(1f, 0.2f, (pitchAngle - stallThreshold) / 0.4f);
         }
 
+        // Combine lift sources and add gravity
         float totalLift = (speedLift + aoaLift) * stallMultiplier;
         float verticalForce = totalLift + gravity;
 
@@ -394,14 +410,16 @@ public class BirdFlightController : MonoBehaviour
             currentSpeed = Mathf.Min(currentSpeed, maxForwardSpeed);
         }
 
+        // Apply forces to Rigidbody
         Vector3 totalForce = forwardThrust + (Vector3.up * verticalForce);
         rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, totalForce, Time.deltaTime * 1.5f);
 
         float aoaDrag = Mathf.Abs(pitchAngle) * 1.2f;
         rb.linearDamping = glideDrag + aoaDrag;
 
-        float maxFallSpeed = -18f;
-        float maxClimbSpeed = 22f;
+        // To revent unrealistic falling/climbing speeds
+        float maxFallSpeed = -14f;
+        float maxClimbSpeed = 20f;
 
         if (rb.linearVelocity.y < maxFallSpeed)
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, maxFallSpeed, rb.linearVelocity.z);
@@ -411,16 +429,19 @@ public class BirdFlightController : MonoBehaviour
 
     void FlapWings()
     {
+        // Prevent multiple flaps while already flapping
         if (isFlapping) return;
 
-        Debug.Log("Flap triggered!"); // For debugging
-
+        // Start wing animation
         StartCoroutine(FlapCoroutine());
 
+        // Less effective flaps when pitching up
         float pitchFactor = 1f - Mathf.Abs(transform.forward.y) * 0.4f;
+        // More effective flaps at higher speeds
         float speedFactor = Mathf.Clamp01(currentSpeed / maxForwardSpeed);
         float flapStrength = flapForce * (0.9f + speedFactor * 0.5f) * pitchFactor * flapBoostMultiplier;
 
+        // Apply upward and forward force for the flap
         rb.AddForce(Vector3.up * flapStrength, ForceMode.Impulse);
         rb.AddForce(transform.forward * flapStrength * 0.5f, ForceMode.Impulse);
 
@@ -428,6 +449,7 @@ public class BirdFlightController : MonoBehaviour
         velocity.y = Mathf.Max(velocity.y, 3f);
         rb.linearVelocity = velocity;
 
+        // Speed boost from flapping
         currentSpeed += 2f;
         currentSpeed = Mathf.Min(currentSpeed, maxForwardSpeed);
     }
@@ -519,11 +541,14 @@ public class BirdFlightController : MonoBehaviour
     {
         if (leftController != null && rightController != null)
         {
+            // Gets current controller orientations
             calibratedLeftRotation = leftController.localEulerAngles;
             calibratedRightRotation = rightController.localEulerAngles;
+            // Store current bird rotation as the neutral flight orientation
             calibratedNeutralRotation = transform.rotation;
             isCalibrated = true;
 
+            // Reset any pending flap states
             leftWingFlapped = false;
             rightWingFlapped = false;
 
@@ -540,6 +565,7 @@ public class BirdFlightController : MonoBehaviour
     {
         Vector3 pos = transform.position;
 
+        // Z-axis constraint - prevent flying beyond the end of the area or behind the start
         if (pos.z > areaLength)
         {
             pos.z = areaLength;
@@ -549,11 +575,13 @@ public class BirdFlightController : MonoBehaviour
             pos.z = 0;
         }
 
+        // X-axis constraint - prevent flying too far left or right
         if (Mathf.Abs(pos.x) > areaWidth / 2)
         {
             pos.x = Mathf.Sign(pos.x) * areaWidth / 2;
         }
 
+        // Y-axis constraint - prevent flying too low or too high
         pos.y = Mathf.Clamp(pos.y, minHeight, maxHeight);
         transform.position = pos;
     }
@@ -580,11 +608,13 @@ public class BirdFlightController : MonoBehaviour
         winTriggered = true;
         hasWon = true;
 
+        // Give the bird a final forward boost
         if (rb != null)
         {
             rb.linearVelocity = transform.forward * 20;
         }
 
+        // Disable flapping systems to prevent further input
         StopAllCoroutines();
         flapsEnabled = false;
         isFlapping = false;
@@ -617,18 +647,16 @@ public class BirdFlightController : MonoBehaviour
         GUILayout.Label("=== BIRD FLIGHT CONTROLLER ===");
         GUILayout.Label($"Position: {transform.position:F1}");
         GUILayout.Label($"Speed: {currentSpeed:F1}");
-        GUILayout.Label($"Is Flapping: {isFlapping}");
-        GUILayout.Label($"Flaps Enabled: {flapsEnabled}");
 
         if (leftController != null && rightController != null)
         {
             if (isCalibrated)
             {
-                GUILayout.Label("✓ Calibrated");
+                GUILayout.Label("Calibrated");
             }
             else
             {
-                GUILayout.Label("⚠ Not Calibrated - Press A button");
+                GUILayout.Label("Not Calibrated - Press A/X button");
             }
         }
 

@@ -253,10 +253,12 @@ public class BirdCollisionHandler : MonoBehaviour
     {
         isInvincible = true;
 
+        // Get all renderers on the bird (the parts that will flash)
         Renderer[] renderers = GetComponentsInChildren<Renderer>();
         float flashInterval = 0.1f;
         float endTime = Time.time + invincibilityDuration;
 
+        // Blink the bird rapidly while invincible
         while (Time.time < endTime)
         {
             foreach (Renderer r in renderers)
@@ -266,6 +268,7 @@ public class BirdCollisionHandler : MonoBehaviour
             yield return new WaitForSeconds(flashInterval);
         }
 
+        // Ensure bird is visible at the end
         foreach (Renderer r in renderers)
         {
             r.enabled = true;
@@ -294,14 +297,14 @@ public class BirdCollisionHandler : MonoBehaviour
     {
         isDead = true;
 
-        Debug.Log("Bird has died!");
-
+        // Disable flight controls and collider
         if (flightController != null)
             flightController.enabled = false;
 
         if (birdCollider != null)
             birdCollider.enabled = false;
 
+        // Stop all movement
         if (rb != null)
         {
             rb.linearVelocity = Vector3.zero;
@@ -309,9 +312,9 @@ public class BirdCollisionHandler : MonoBehaviour
             rb.useGravity = true;
         }
 
-        OnDeath?.Invoke();
         StartCoroutine(DeathRoutine());
 
+        // Clear the scene of buildings - Not really needed as loading a new scene
         buildingMapGenerator = GetComponent<BuildingMapGenerator>();
         buildingMapGenerator.ClearMap();
     }

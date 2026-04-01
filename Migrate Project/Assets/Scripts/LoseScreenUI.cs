@@ -17,12 +17,6 @@ public class LoseScreenUI : MonoBehaviour
         // Set up button clicks
         playAgainButton.onClick.AddListener(PlayAgain);
         quitButton.onClick.AddListener(QuitGame);
-
-        // Make sure panel is visible
-        if (loseScreenPanel != null)
-        {
-            loseScreenPanel.SetActive(true);
-        }
     }
 
     void PlayAgain()

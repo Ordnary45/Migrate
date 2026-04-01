@@ -9,7 +9,7 @@ public class VRCameraFollow : MonoBehaviour
 
     [Header("Camera Settings")]
     [SerializeField] private bool maintainWorldOffset = true; // Keep offset in world space, not relative to bird rotation
-    [SerializeField] private float maxFollowDistance = 50f; // Prevent camera from going too far
+    [SerializeField] private float maxFollowDistance = 40f; // Prevent camera from going too far
 
     [Header("Motion Sickness Reduction")]
     [SerializeField] private bool smoothPosition = true;
@@ -43,7 +43,7 @@ public class VRCameraFollow : MonoBehaviour
     {
         if (target == null) return;
 
-        // Calculate target position in WORLD space, not relative to bird rotation
+        // Calculate target position in WORLD space
         if (maintainWorldOffset)
         {
             targetPosition = target.position + positionOffset;

@@ -119,6 +119,7 @@ public class ControllerLaser : MonoBehaviour
 
     public void SetLaserColor(Color color)
     {
+        // If line renderer and laser point exist change color
         laserColor = color;
         if (lineRenderer != null)
         {

@@ -77,7 +77,6 @@ public class BuildingMapGenerator : MonoBehaviour
                 DestroyImmediate(group);
         }
         spawnedGroups.Clear();
-        Debug.Log("Map cleared");
     }
 
     // Public method to get all spawned building groups
