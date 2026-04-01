@@ -5569,7 +5569,7 @@ MonoBehaviour:
   upThreshold: 0.15
   downThreshold: -0.15
   maxStoredFlaps: 3
-  areaLength: 800
+  areaLength: 1000
   areaWidth: 200
   minHeight: 10
   maxHeight: 100
@@ -5578,7 +5578,7 @@ MonoBehaviour:
   controllerDeadzone: 0.2
   controllerSensitivity: 0.5
   calibrateOnStart: 1
-  winZPosition: 700
+  winZPosition: 800
   winSceneName: Level3
   winDelay: 3
   birdVisual: {fileID: 357690131}
