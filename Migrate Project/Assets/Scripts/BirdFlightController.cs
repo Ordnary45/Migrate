@@ -17,11 +17,10 @@ public class BirdFlightController : MonoBehaviour
     [SerializeField] private Transform leftWing;
     [SerializeField] private Transform rightWing;
     [SerializeField] private float wingFlapAngle = 35f;
-    [SerializeField] private float maxFlapDelay = 0.2f;
-    [SerializeField] private float flapVelocityThreshold = 0.6f;
-    [SerializeField] private float startupFlapDelay = 2f;
-    [SerializeField] private float flapCooldown = 0.5f;
-    [SerializeField] private float wingCooldown = 0.3f;
+    [SerializeField] private float startupFlapDelay = 1f;
+    [SerializeField] private float upThreshold = 0.15f;
+    [SerializeField] private float downThreshold = -0.15f;
+    [SerializeField] private int maxStoredFlaps = 3;
 
     [Header("Area Constraints")]
     [SerializeField] private float areaLength = 1000f;
@@ -37,7 +36,6 @@ public class BirdFlightController : MonoBehaviour
 
     [Header("Controller Calibration")]
     [SerializeField] private bool calibrateOnStart = true;
-
     [SerializeField] private float winZPosition = 1000f;
     [SerializeField] private string winSceneName = "You win";
     [SerializeField] private float winDelay = 3f;
@@ -54,26 +52,15 @@ public class BirdFlightController : MonoBehaviour
     [SerializeField] private float flapBoostMultiplier = 1.5f;
 
     private Rigidbody rb;
-    private Vector3 previousLeftControllerPos;
-    private Vector3 previousRightControllerPos;
-
     private float currentSpeed;
     private bool isFlapping = false;
 
     // Flap detection variables
-    private bool leftWingFlapped = false;
-    private bool rightWingFlapped = false;
-    private float leftFlapTime = 0f;
-    private float rightFlapTime = 0f;
-    private float lastFlapTime = 0f;
-
-    // Per-wing cooldown to prevent multiple triggers
-    private float leftWingTriggerCooldown = 0f;
-    private float rightWingTriggerCooldown = 0f;
-
-    // Track previous flap state for detection
-    private bool leftWingWasFlapping = false;
-    private bool rightWingWasFlapping = false;
+    private int flapCount = 0;
+    private bool leftWentUp = false;
+    private bool rightWentUp = false;
+    private float previousLeftY;
+    private float previousRightY;
 
     private bool flapsEnabled = false;
     private float startupTimer = 0f;
@@ -141,11 +128,12 @@ public class BirdFlightController : MonoBehaviour
             birdVisual.localRotation = Quaternion.identity;
         }
 
-        // Store initial controller positions for velocity calculation
+        // Initialize Y of controllers
         if (leftController != null)
-            previousLeftControllerPos = leftController.position;
+            previousLeftY = leftController.position.y;
+
         if (rightController != null)
-            previousRightControllerPos = rightController.position;
+            previousRightY = rightController.position.y;
 
         StartCoroutine(EnableFlapsAfterDelay());
 
@@ -175,9 +163,11 @@ public class BirdFlightController : MonoBehaviour
         if (hasWon) return;
         CheckCalibrationButton();
 
-        // Update wing cooldowns
-        if (leftWingTriggerCooldown > 0) leftWingTriggerCooldown -= Time.deltaTime;
-        if (rightWingTriggerCooldown > 0) rightWingTriggerCooldown -= Time.deltaTime;
+        // If more flap count and not flapping, flap
+        if (!isFlapping && flapCount > 0)
+        {
+            ConsumeFlap();
+        }
 
         if (keyControls)
         {
@@ -205,82 +195,8 @@ public class BirdFlightController : MonoBehaviour
     void HandleControllerInput()
     {
         if (leftController == null || rightController == null) return;
-
-        // Calculate velocities
-        Vector3 leftVelocity = (leftController.position - previousLeftControllerPos) / Time.deltaTime;
-        Vector3 rightVelocity = (rightController.position - previousRightControllerPos) / Time.deltaTime;
-
-        float leftFlapSpeed = leftVelocity.y;
-        float rightFlapSpeed = rightVelocity.y;
-
-        // Flap detection with state tracking and cooldowns
-        if (flapsEnabled && !isFlapping && Time.time - lastFlapTime > flapCooldown)
-        {
-            bool leftTriggered = false;
-            bool rightTriggered = false;
-
-            // Left wing - detect when speed crosses threshold from below
-            bool leftFlappingNow = leftFlapSpeed > flapVelocityThreshold;
-            if (leftFlappingNow && !leftWingWasFlapping && !leftWingFlapped && leftWingTriggerCooldown <= 0)
-            {
-                leftWingFlapped = true;
-                leftFlapTime = Time.time;
-                leftWingTriggerCooldown = wingCooldown;
-                leftTriggered = true;
-            }
-
-            // Right wing - detect when speed crosses threshold from below
-            bool rightFlappingNow = rightFlapSpeed > flapVelocityThreshold;
-            if (rightFlappingNow && !rightWingWasFlapping && !rightWingFlapped && rightWingTriggerCooldown <= 0)
-            {
-                rightWingFlapped = true;
-                rightFlapTime = Time.time;
-                rightWingTriggerCooldown = wingCooldown;
-                rightTriggered = true;
-            }
-
-            // Update previous states for next frame
-            leftWingWasFlapping = leftFlapSpeed > flapVelocityThreshold * 0.5f;
-            rightWingWasFlapping = rightFlapSpeed > flapVelocityThreshold * 0.5f;
-
-            // If both wings have flapped within the delay window, trigger flap
-            if (leftWingFlapped && rightWingFlapped)
-            {
-                if (Mathf.Abs(leftFlapTime - rightFlapTime) <= maxFlapDelay)
-                {
-                    FlapWings();
-                    lastFlapTime = Time.time;
-
-                    // Reset flap flags
-                    leftWingFlapped = false;
-                    rightWingFlapped = false;
-
-                    // Reset controller positions to prevent immediate re-trigger
-                    previousLeftControllerPos = leftController.position;
-                    previousRightControllerPos = rightController.position;
-                }
-                else
-                {
-                    // Wings flapped too far apart - reset individual flags
-                    if (Time.time - leftFlapTime > maxFlapDelay)
-                        leftWingFlapped = false;
-                    if (Time.time - rightFlapTime > maxFlapDelay)
-                        rightWingFlapped = false;
-                }
-            }
-
-            // Auto-reset individual flaps if waiting too long
-            if (leftWingFlapped && Time.time - leftFlapTime > maxFlapDelay)
-                leftWingFlapped = false;
-            if (rightWingFlapped && Time.time - rightFlapTime > maxFlapDelay)
-                rightWingFlapped = false;
-        }
-        else
-        {
-            // Reset the "was flapping" states when not in flap mode
-            leftWingWasFlapping = false;
-            rightWingWasFlapping = false;
-        }
+        HandleFlapCount();
+        
 
         // Flight control code
         if (isCalibrated)
@@ -306,7 +222,7 @@ public class BirdFlightController : MonoBehaviour
             // X-axis (pitch) - tilting forward/backward controls nose up/down
             // Y-axis (yaw) - twisting controls left/right turning
             // Z-axis (roll) - tilting sideways controls banking
-            float pitchInput = averagedDelta.x * controllerSensitivity * 1.5f;
+            float pitchInput = averagedDelta.x * controllerSensitivity;
             float yawInput = averagedDelta.y * controllerSensitivity;
             float rollInput = averagedDelta.z * controllerSensitivity;
 
@@ -328,14 +244,12 @@ public class BirdFlightController : MonoBehaviour
             Vector3 turnForce = transform.right * turnStrength * turnSpeedMultiplier;
             rb.AddForce(turnForce, ForceMode.Acceleration);
         }
-        previousLeftControllerPos = leftController.position;
-        previousRightControllerPos = rightController.position;
     }
 
     void HandleKeyboardInput()
     {
         // Keyboard flap detection
-        if (!isFlapping && Time.time - lastFlapTime > flapCooldown)
+        if (!isFlapping)
         {
             bool leftPressed = Input.GetKeyDown(KeyCode.LeftArrow);
             bool rightPressed = Input.GetKeyDown(KeyCode.RightArrow);
@@ -343,7 +257,6 @@ public class BirdFlightController : MonoBehaviour
             if (leftPressed && rightPressed)
             {
                 FlapWings();
-                lastFlapTime = Time.time;
             }
         }
 
@@ -425,6 +338,56 @@ public class BirdFlightController : MonoBehaviour
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, maxFallSpeed, rb.linearVelocity.z);
         else if (rb.linearVelocity.y > maxClimbSpeed)
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, maxClimbSpeed, rb.linearVelocity.z);
+    }
+
+    void HandleFlapCount()
+    {
+        if (!flapsEnabled || leftController == null || rightController == null)
+            return;
+
+        float leftDeltaY = leftController.position.y - previousLeftY;
+        float rightDeltaY = rightController.position.y - previousRightY;
+
+        // LEFT controller
+        if (leftDeltaY > upThreshold)
+        {
+            leftWentUp = true;
+        }
+        else if (leftWentUp && leftDeltaY < downThreshold)
+        {
+            RegisterFlap();
+        }
+
+        // RIGHT controller
+        if (rightDeltaY > upThreshold)
+        {
+            rightWentUp = true;
+        }
+        else if (rightWentUp && rightDeltaY < downThreshold)
+        {
+            RegisterFlap();
+        }
+
+        previousLeftY = leftController.position.y;
+        previousRightY = rightController.position.y;
+    }
+
+    void RegisterFlap()
+    {
+        if (leftWentUp && rightWentUp)
+        {
+            flapCount = Mathf.Min(flapCount + 1, maxStoredFlaps);
+            leftWentUp = false;
+            rightWentUp = false;
+        }
+    }
+
+    private void ConsumeFlap()
+    {
+        if (isFlapping) return;
+
+        flapCount--;
+        FlapWings();
     }
 
     void FlapWings()
@@ -548,10 +511,6 @@ public class BirdFlightController : MonoBehaviour
             calibratedNeutralRotation = transform.rotation;
             isCalibrated = true;
 
-            // Reset any pending flap states
-            leftWingFlapped = false;
-            rightWingFlapped = false;
-
             if (rb != null)
             {
                 rb.angularVelocity = Vector3.zero;
@@ -669,14 +628,9 @@ public class BirdFlightController : MonoBehaviour
     public void ResetFlapStates()
     {
         isFlapping = false;
-        leftWingFlapped = false;
-        rightWingFlapped = false;
-        leftFlapTime = 0f;
-        rightFlapTime = 0f;
-        leftWingWasFlapping = false;
-        rightWingWasFlapping = false;
-        leftWingTriggerCooldown = 0f;
-        rightWingTriggerCooldown = 0f;
+        flapCount = 0;
+        leftWentUp = false;
+        rightWentUp = false;
 
         StopAllCoroutines();
 
@@ -684,10 +638,5 @@ public class BirdFlightController : MonoBehaviour
             leftWing.localRotation = Quaternion.identity;
         if (rightWing != null)
             rightWing.localRotation = Quaternion.identity;
-
-        if (leftController != null)
-            previousLeftControllerPos = leftController.position;
-        if (rightController != null)
-            previousRightControllerPos = rightController.position;
     }
 }
