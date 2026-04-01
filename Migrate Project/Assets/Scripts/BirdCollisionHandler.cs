@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using System.Collections;
 
@@ -9,12 +10,12 @@ public class BirdCollisionHandler : MonoBehaviour
     [SerializeField] private float collisionCooldown = 2f;
     [SerializeField] private LayerMask obstacleLayers = ~0;
 
+    [Header("Building Collision")]
+    [SerializeField] private BuildingMapGenerator buildingMapGenerator;
+
     [Header("Health Settings")]
     [SerializeField] private int maxHealth = 3;
     private int currentHealth;
-
-    [Header("Spin Control")]
-    [SerializeField] private float angularDragDuringCollision = 10f;
 
     [Header("Effects")]
     [SerializeField] private AudioClip collisionSound;
@@ -22,6 +23,10 @@ public class BirdCollisionHandler : MonoBehaviour
 
     [Header("UI References")]
     [SerializeField] private Text healthText;
+
+    [Header("Death Scene")]
+    [SerializeField] private string loseSceneName = "You lose";
+    [SerializeField] private float deathSceneDelay = 2f;
 
     // Components
     private BirdFlightController flightController;
@@ -34,11 +39,13 @@ public class BirdCollisionHandler : MonoBehaviour
     private bool isInvincible = false;
     private bool isRecovering = false;
     private float collisionTimer = 0f;
+    private bool isDead = false;
 
     // Events
     public System.Action<int> OnHealthChanged;
     public System.Action OnDeath;
     public System.Action OnCollision;
+    public bool IsRecovering => isRecovering;
 
     void Start()
     {
@@ -57,6 +64,8 @@ public class BirdCollisionHandler : MonoBehaviour
 
         currentHealth = maxHealth;
         UpdateHealthDisplay();
+
+        isDead = false;
     }
 
     void Update()
@@ -97,6 +106,9 @@ public class BirdCollisionHandler : MonoBehaviour
         // Stop all movement and rotation
         StopBirdMovement();
 
+        // Reset flap states before disabling controller
+        ResetFlapStates();
+
         // Reduce health
         TakeDamage(1);
 
@@ -105,11 +117,6 @@ public class BirdCollisionHandler : MonoBehaviour
 
         // Play sound
         PlayCollisionSound();
-
-        // Notify other systems
-        OnCollision?.Invoke();
-
-        Debug.Log($"Bird collided! Health: {currentHealth}/{maxHealth}");
     }
 
     void StopBirdMovement()
@@ -124,7 +131,16 @@ public class BirdCollisionHandler : MonoBehaviour
         // Reset rotation to stable orientation
         Vector3 forward = transform.forward;
         forward.y = Mathf.Clamp(forward.y, -0.5f, 0.5f);
+        forward.Normalize();
         transform.rotation = Quaternion.LookRotation(forward, Vector3.up);
+    }
+
+    void ResetFlapStates()
+    {
+        if (flightController != null)
+        {
+            flightController.ResetFlapStates();
+        }
     }
 
     IEnumerator MoveBirdBackward()
@@ -132,8 +148,10 @@ public class BirdCollisionHandler : MonoBehaviour
         isRecovering = true;
 
         // Disable flight control during movement
-        if (flightController != null)
+        if (flightController != null) {
             flightController.enabled = false;
+            flightController.ResetFlapStates();
+        }
 
         float areaLength = flightController.GetAreaLength();
         float minHeight = flightController.GetMinHeight();
@@ -141,11 +159,12 @@ public class BirdCollisionHandler : MonoBehaviour
 
         // Calculate new position
         Vector3 newPosition = transform.position;
-        newPosition.x -= pushbackDistance;
+        newPosition.z -= pushbackDistance;
 
         // Keep within world limits
         newPosition.x = Mathf.Clamp(newPosition.x, 0, areaLength);
         newPosition.y = Mathf.Clamp(newPosition.y, minHeight, maxHeight);
+        newPosition.z = Mathf.Clamp(newPosition.z, 0, areaLength);
 
         // Check if the new position is colliding
         if (IsPositionColliding(newPosition))
@@ -176,9 +195,11 @@ public class BirdCollisionHandler : MonoBehaviour
 
         // Restore normal angular drag
         if (rb != null)
-        {
             rb.angularDamping = originalAngularDrag;
-        }
+
+        // Reset flap states again before re-enabling
+        if (flightController != null)
+            flightController.ResetFlapStates();
 
         // Re-enable flight control
         if (flightController != null)
@@ -271,6 +292,8 @@ public class BirdCollisionHandler : MonoBehaviour
 
     void Die()
     {
+        isDead = true;
+
         Debug.Log("Bird has died!");
 
         if (flightController != null)
@@ -279,21 +302,26 @@ public class BirdCollisionHandler : MonoBehaviour
         if (birdCollider != null)
             birdCollider.enabled = false;
 
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.useGravity = true;
+        }
+
         OnDeath?.Invoke();
         StartCoroutine(DeathRoutine());
+
+        buildingMapGenerator = GetComponent<BuildingMapGenerator>();
+        buildingMapGenerator.ClearMap();
     }
 
     IEnumerator DeathRoutine()
     {
-        if (rb != null)
-        {
-            rb.useGravity = true;
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-        }
+        // Wait for death scene delay
+        yield return new WaitForSeconds(deathSceneDelay);
+        SceneManager.LoadScene(loseSceneName);
 
-        yield return new WaitForSeconds(2f);
-        gameObject.SetActive(false);
     }
 
     public int GetCurrentHealth() => currentHealth;
@@ -303,7 +331,7 @@ public class BirdCollisionHandler : MonoBehaviour
     {
         // Visualize pushback distance in editor
         Gizmos.color = Color.red;
-        Vector3 pushbackEnd = transform.position + (Vector3.left * pushbackDistance);
+        Vector3 pushbackEnd = transform.position + (Vector3.back * pushbackDistance);
         Gizmos.DrawLine(transform.position, pushbackEnd);
         Gizmos.DrawWireSphere(pushbackEnd, 1f);
     }
